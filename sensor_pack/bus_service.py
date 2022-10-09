@@ -62,6 +62,9 @@ class I2cAdapter(BusAdapter):
         return self.bus.readfrom_mem(device_addr, reg_addr, bytes_count)
 
     def read(self, device_addr, n_bytes: int) -> bytes:
+        """Read nbytes from the peripheral specified by addr. If stop is true then a STOP condition is
+        generated at the end of the transfer.
+        Returns a bytes object with the data read."""
         return self.bus.readfrom(device_addr, n_bytes)
     
     def read_buf_from_mem(self, device_addr, mem_addr, buf):
@@ -71,7 +74,11 @@ class I2cAdapter(BusAdapter):
         The number of bytes read is determined by the length of the buffer buf"""
         return self.bus.readfrom_mem_into(device_addr, mem_addr, buf)
 
-    def write(self, device_addr, buf: bytes):
+    def write(self, device_addr, buf: bytes) -> int:
+        """Write the bytes from buf to the peripheral specified by addr. If a NACK is received following the write
+        of a byte from buf then the remaining bytes are not sent. If stop is true then a STOP condition is generated
+        at the end of the transfer, even if a NACK is received.
+        The function returns the number of ACKs that were received."""
         return self.bus.writeto(device_addr, buf)
 
     def write_buf_to_mem(self, device_addr, mem_addr, buf):
