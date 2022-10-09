@@ -24,6 +24,8 @@ class SCD4xSensirion(BaseSensor, Iterator):
     def get_id(self) -> tuple:
         """Return 3 words of unique serial number can be used to identify
         the chip and to verify the presence of the sensor."""
+        # создатели датчика 'обрадовали'. вместо подсчета одного байта CRC на 6 байт (3 двухбайтных слова)
+        # они считают CRC для каждого из 3-х двухбайтных слов!
         cmd = 0x3682
         self._write(cmd.to_bytes(2, "big"))
         b = self._read(9)
