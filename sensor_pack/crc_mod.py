@@ -13,7 +13,7 @@
     CRC-8: 0x52"""
 
 
-def crc8(sequence, polynomial: int, init_value: int = 0x00):
+def crc8(sequence, polynomial: int, init_value: int = 0x00) -> int:
     mask = 0xFF
     crc = init_value & mask
     for item in sequence:
