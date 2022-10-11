@@ -5,9 +5,12 @@ from sensor_pack.base_sensor import BaseSensor, Iterator
 from sensor_pack import base_sensor
 from sensor_pack.crc_mod import crc8
 import utime
-from sensor_pack import bitfield
-import struct
-import array
+
+
+def _calc_crc(sequence) -> int:
+    """Обертка для короткого вызова.
+    Wrapper for a short call."""
+    return crc8(sequence, polynomial=0x31, init_value=0xFF)
 
 
 class SCD4xSensirion(BaseSensor, Iterator):
@@ -23,8 +26,6 @@ class SCD4xSensirion(BaseSensor, Iterator):
         self._low_power_mode = False
         # measurement mode (single shot, continuous)
         self._single_shot_mode = False
-        # for send cmd
-        # self.buf = bytearray(5)
 
     def _read(self, n_bytes: int) -> bytes:
         return self.adapter.read(self.address, n_bytes)
@@ -32,23 +33,23 @@ class SCD4xSensirion(BaseSensor, Iterator):
     def _write(self, buf: bytes) -> bytes:
         return self.adapter.write(self.address, buf)
 
-    @staticmethod
-    def _calc_crc(sequence) -> int:
-        return crc8(sequence, 0x31, 0xFF)
-
     def _send_command(self, cmd: int, value: [bytes, None],
-                      wait_time: int = 0, bytes_for_read: int = 0) -> [bytes, None]:
+                      wait_time: int = 0, bytes_for_read: int = 0,
+                      crc_index: range = None,
+                      value_index: tuple = None) -> [bytes, None]:
         """Передает команду датчику по шине.
         cmd - код команды.
         value - последовательность, передаваемая после кода команды.
         wait_time - время в мс. которое нужно подождать для обработки команды датчиком.
         bytes_for_read - количество байт в ответе датчика, если не 0, то будет считан ответ,
-        проверена CRC (зависит от self.check_crc) и этот ответ будет возвращен, как результат"""
+        проверена CRC (зависит от self.check_crc) и этот ответ будет возвращен, как результат.
+        crc_index_range - индексы crc в последовательности.
+        value_index_ranges- кортеж индексов (range) данных значений в последовательности. (range(3), range(4,6), range(7,9))"""
         raw_cmd = cmd.to_bytes(2, "big")
         raw_out = raw_cmd
         if value:
-            raw_out += value    # добавляю value и crc
-            raw_out += SCD4xSensirion._calc_crc(value).to_bytes(1, "big")     # crc считается только для данных!
+            raw_out += value    # добавляю value и его crc
+            raw_out += _calc_crc(value.to_bytes(1, "big"))     # crc считается только для данных!
         self._write(raw_out)    # выдача на шину
         if wait_time:
             utime.sleep_ms(wait_time)   # ожидание
@@ -57,6 +58,11 @@ class SCD4xSensirion(BaseSensor, Iterator):
         b = self._read(bytes_for_read)  # читаю с шины с проверкой количества считанных байт
         base_sensor.check_value(len(b), (bytes_for_read,),
                                 f"Invalid buffer length for cmd: {cmd}. Received {len(b)} out of {bytes_for_read}")
+        if self.check_crc:
+            crc_from_buf = [b[i] for i in crc_index]  # build list of CRC from buf
+            calculated_crc = [_calc_crc(b[rng.start:rng.stop]) for rng in value_index]
+            if crc_from_buf != calculated_crc:
+                raise ValueError(f"Invalid CRC! Calculated{calculated_crc}. From buffer {crc_from_buf}")
         return b    # возврат считанного bytearray
 
     # BaseSensor
@@ -82,15 +88,8 @@ class SCD4xSensirion(BaseSensor, Iterator):
         # создатели датчика 'обрадовали'. вместо подсчета одного байта CRC на 6 байт (3 двухбайтных слова)
         # они считают CRC для каждого из 3-х двухбайтных слов!
         cmd = 0x3682
-        b = self._send_command(cmd, None, 0, bytes_for_read=9)
-        if self.check_crc:
-            crc_from_buf = [b[i] for i in range(2, 9, 3)]  # build list of CRC from buf
-            # build list of calculated CRC
-            calculated_crc = [SCD4xSensirion._calc_crc((b[i], b[i+1])) for i in range(0, 9, 3)]
-            # print(crc_from_buf, calculated_crc)
-            if crc_from_buf != calculated_crc:      # compare CRC from buf and calculated CRC
-                base_sensor.check_value(1, (0,),    # Fail!
-                                        f"Invalid СRC value(s): received: {crc_from_buf}, calculated: {calculated_crc}")
+        b = self._send_command(cmd, None, 0, bytes_for_read=9,
+                               crc_index=range(2, 9, 3), value_index=(range(2), range(3, 5), range(6, 8)))
         # return result
         return tuple([(b[i] << 8) | b[i+1] for i in range(0, 9, 3)])    # Success
 
@@ -108,15 +107,10 @@ class SCD4xSensirion(BaseSensor, Iterator):
         The feature can be used as an end-of-line test to check sensor functionality and the customer power
         supply to the sensor. Returns True when the test is successful."""
         cmd = 0x3639
-        self._write(cmd.to_bytes(2, "big"))
-        utime.sleep(10)  # да, ждать 10 секунд! yes, wait 10 seconds!
-        b = self._read(3)
-        base_sensor.check_value(len(b), (3,), f"Invalid buffer length (exec_self_test): {len(b)}")
+        length = 3
+        b = self._send_command(cmd, None, wait_time=10_000,     # да, ждать 10 секунд! yes, wait 10 seconds!
+                               bytes_for_read=length, crc_index=range(2, 3), value_index=(range(2),))
         res = self.unpack("H", b)[0]
-        if self.check_crc:
-            crc = SCD4xSensirion._calc_crc(res.to_bytes(2, "big"))
-            base_sensor.check_value(1, (0,),  # Fail!
-                                    f"Invalid СRC value(s): received: {b[2]}, calculated: {crc}")
         return 0 == res
 
     def reinit(self) -> None:
@@ -128,8 +122,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         If the reinit command does not trigger the desired re-initialization,
         a power-cycle should be applied to the SCD4x."""
         cmd = 0x3646
-        self._write(cmd.to_bytes(2, "big"))
-        utime.sleep_ms(20)
+        self._send_command(cmd, None, 20)
 
     # On-chip output signal compensation
     def set_temperature_offset(self, offset: float):
@@ -147,16 +140,11 @@ class SCD4xSensirion(BaseSensor, Iterator):
         𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_𝑎𝑐𝑡𝑢𝑎𝑙 = 𝑇 𝑆𝐶𝐷40 − 𝑇 𝑅𝑒𝑓𝑒𝑟𝑒𝑛𝑐𝑒 + 𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_ 𝑝𝑟𝑒𝑣𝑖𝑜𝑢𝑠"""
         cmd = 0x241D
         offset_raw = int(374.49142857 * offset)
-        crc = SCD4xSensirion._calc_crc(offset_raw.to_bytes(2, "big"))
-        self._write(cmd.to_bytes(2, "big")+offset_raw.to_bytes(2, "big") + crc.to_bytes(1, "big"))
-        utime.sleep_ms(1)
+        self._send_command(cmd, offset_raw.to_bytes(2, "big"), 1)
 
     def get_temperature_offset(self) -> float:
         cmd = 0x2318
-        self._write(cmd.to_bytes(2, "big"))
-        utime.sleep_ms(1)
-        b = self._read(3)
-        base_sensor.check_value(len(b), (3,), f"Invalid buffer length (get_temperature_offset): {len(b)}")
+        b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         temp_offs = self.unpack("H", b)[0]
         return 0.0026702880859375 * temp_offs
 
@@ -170,16 +158,11 @@ class SCD4xSensirion(BaseSensor, Iterator):
         the save_config method. By default, the sensor height is set to 0 meters above sea level (masl)."""
         cmd = 0x2427
         masl_raw = masl.to_bytes(2, "big")
-        crc = SCD4xSensirion._calc_crc(masl_raw)
-        self._write(cmd.to_bytes(2, "big") + masl_raw + crc.to_bytes(1, "big"))
-        utime.sleep_ms(1)
+        self._send_command(cmd, masl_raw, 1)
 
     def get_altitude(self) -> int:
         cmd = 0x2322
-        self._write(cmd.to_bytes(2, "big"))
-        utime.sleep_ms(1)
-        b = self._read(3)
-        base_sensor.check_value(len(b), (3,), f"Invalid buffer length (get_altitude): {len(b)}")
+        b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         return self.unpack("H", b)[0]
 
     def set_ambient_pressure(self, pressure: float):
@@ -193,28 +176,28 @@ class SCD4xSensirion(BaseSensor, Iterator):
         on the previously set sensor height. The use of this command is highly recommended for applications with
         significant changes in ambient pressure to ensure sensor accuracy."""
         cmd = 0xE000
-        press_raw = int(pressure // 100).to_bytes(2, "big")
-        crc = SCD4xSensirion._calc_crc(press_raw)
-        self._write(cmd.to_bytes(2, "big") + press_raw + crc.to_bytes(1, "big"))
-        utime.sleep_ms(1)
+        press_raw = int(pressure // 100).to_bytes(2, "big")     # Pascal // 100
+        self._send_command(cmd, press_raw, 1)
 
     def periodic_measurement(self, start: bool):
         """Start periodic measurement. In low power mode, signal update interval is approximately 30 seconds.
         In normal power mode, signal update interval is approximately 5 seconds."""
+        wt = 0
         if start:
             cmd = 0x21AC if self._low_power_mode else 0x21B1
         else:   # stop periodic measurement
             cmd = 0x3F86
-        self._write(cmd.to_bytes(2, "big"))
+            wt = 500
+        self._send_command(cmd, None, wt)
 
     def is_data_ready(self) -> bool:
+        """Return data ready status"""
         cmd = 0xE4B8
         utime.sleep_ms(1)
         b = self._read(3)
         base_sensor.check_value(len(b), (3,), f"Invalid buffer length (is_data_ready): {len(b)}")
-        return self.unpack("H", b)[0]
-
-
+        self._send_command(cmd, None, 1, 3, crc_index=range(2, 3), value_index=(range(2),))
+        return bool(self.unpack("H", b)[0] & 0b0000_0111_1111_1111)
 
     # Iterator
     def __iter__(self):
