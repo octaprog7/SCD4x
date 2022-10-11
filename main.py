@@ -18,6 +18,15 @@ if __name__ == '__main__':
     # sensor
     sen = SCD4xSensirion(adaptor)
     sid = sen.get_id()
-    print(f"Sensor id words: {sid}")
-
+    print(f"Sensor id 3 x Word: {sid}")
+    t_offs = 1.3
+    print(f"Set temperature offset sensor to {t_offs} Celsius")
+    sen.set_temperature_offset(t_offs)
+    t_offs = sen.get_temperature_offset()
+    print(f"Get temperature offset from sensor: {t_offs} Celsius")
+    masl = 160
+    print(f"Set my place M.A.S.L. to {masl} meter")
+    sen.set_altitude(masl)
+    masl = sen.get_altitude()
+    print(f"Get M.A.S.L. from sensor: {masl} meter")
 
