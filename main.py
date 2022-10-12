@@ -1,3 +1,5 @@
+import utime
+
 from scd4x_sensirion import SCD4xSensirion
 from machine import I2C
 from sensor_pack.bus_service import I2cAdapter
@@ -17,9 +19,14 @@ if __name__ == '__main__':
     adaptor = I2cAdapter(i2c)
     # sensor
     sen = SCD4xSensirion(adaptor)
+    # Force return sensor in IDLE mode!
+    # Принудительно перевожу датчик в режим IDLE!
+    sen.set_measurement(start=False, single_shot=False)
     sid = sen.get_id()
     print(f"Sensor id 3 x Word: {sid}")
-    t_offs = 1.3
+    t_offs = 0.0
+    # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
+    # Otherwise an EIO exception will be raised!
     print(f"Set temperature offset sensor to {t_offs} Celsius")
     sen.set_temperature_offset(t_offs)
     t_offs = sen.get_temperature_offset()
@@ -29,4 +36,25 @@ if __name__ == '__main__':
     sen.set_altitude(masl)
     masl = sen.get_altitude()
     print(f"Get M.A.S.L. from sensor: {masl} meter")
+    # data ready
+    if sen.is_data_ready():
+        print("Measurement data can be read!")  # Данные измерений могут быть прочитаны!
+    else:
+        print("Measurement data missing!")
 
+    sen.set_measurement(start=True, single_shot=False)
+    wt = sen.get_conversion_cycle_time()
+    print("Periodic measurement started")
+    for i in range(5):
+        utime.sleep_ms(wt)
+        co2, t, rh = sen.get_meas_data()
+        print(f"CO2: {co2}; T: {t}; RH: {rh}")
+    
+    print(20*"*_")
+    print("Reading using an iterator!")
+    for items in sen:
+        utime.sleep_ms(wt)
+        if items:
+            co2, t, rh = items
+            print(f"CO2: {co2}; T: {t}; RH: {rh}")
+        
