@@ -17,7 +17,7 @@ def _calc_crc(sequence) -> int:
 class SCD4xSensirion(BaseSensor, Iterator):
     """Class for work with Sensirion SCD4x sensor"""
     def __init__(self, adapter: bus_service.BusAdapter, address=0x62,
-                 check_crc: bool = True, this_is_scd41: bool = True):
+                 this_is_scd41: bool = True, check_crc: bool = True):
         """Если check_crc в Истина, то каждый, принятый от датчика пакет данных, проверяется на правильность путем
         расчета контрольной суммы.
         Если this_is_scd41 == True, то будут доступны методы для SCD41, иначе будут доступны методы ОБЩИЕ для SCD40/41!
