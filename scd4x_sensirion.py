@@ -4,6 +4,7 @@ from sensor_pack import bus_service
 from sensor_pack.base_sensor import BaseSensor, Iterator
 from sensor_pack import base_sensor
 from sensor_pack.crc_mod import crc8
+import micropython
 import utime
 
 
@@ -15,17 +16,29 @@ def _calc_crc(sequence) -> int:
 
 class SCD4xSensirion(BaseSensor, Iterator):
     """Class for work with Sensirion SCD4x sensor"""
-    def __init__(self, adapter: bus_service.BusAdapter, address=0x62, check_crc: bool = True):
+    def __init__(self, adapter: bus_service.BusAdapter, address=0x62,
+                 check_crc: bool = True, this_is_scd41: bool = True):
         """Если check_crc в Истина, то каждый, принятый от датчика пакет данных, проверяется на правильность путем
         расчета контрольной суммы.
+        Если this_is_scd41 == True, то будут доступны методы для SCD41, иначе будут доступны методы ОБЩИЕ для SCD40/41!
         If check_crs is True, then each data packet received from the sensor is checked for correctness by
-        calculating the checksum."""
+        calculating the checksum.
+        If this_is_scd41 == True then methods for SCD41 will be available,
+        otherwise GENERAL methods for SCD40/41 will be available!"""
         super().__init__(adapter, address, True)    # Big Endian
         self.check_crc = check_crc
         # power mode
         self._low_power_mode = False
         # measurement mode (single shot, continuous)
         self._single_shot_mode = False
+        self._rht_only = False
+        self._isSCD41 = this_is_scd41
+        # сохраняю, чтобы не вызывать 125 раз
+        self.byte_order = self._get_byteorder_as_str()
+
+    def _to_bytes(self, value, length: int):
+        byteorder = self.byte_order[0]
+        return value.to_bytes(length, byteorder)
 
     def _read(self, n_bytes: int) -> bytes:
         return self.adapter.read(self.address, n_bytes)
@@ -44,12 +57,13 @@ class SCD4xSensirion(BaseSensor, Iterator):
         bytes_for_read - количество байт в ответе датчика, если не 0, то будет считан ответ,
         проверена CRC (зависит от self.check_crc) и этот ответ будет возвращен, как результат.
         crc_index_range - индексы crc в последовательности.
-        value_index_ranges- кортеж индексов (range) данных значений в последовательности. (range(3), range(4,6), range(7,9))"""
-        raw_cmd = cmd.to_bytes(2, "big")
+        value_index_ranges- кортеж индексов (range) данных значений в
+        последовательности. (range(3), range(4,6), range(7,9))"""
+        raw_cmd = self._to_bytes(cmd, 2)
         raw_out = raw_cmd
         if value:
             raw_out += value    # добавляю value и его crc
-            raw_out += _calc_crc(value.to_bytes(1, "big"))     # crc считается только для данных!
+            raw_out += self._to_bytes(_calc_crc(value), 1)     # crc считается только для данных!
         self._write(raw_out)    # выдача на шину
         if wait_time:
             utime.sleep_ms(wait_time)   # ожидание
@@ -94,7 +108,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         return tuple([(b[i] << 8) | b[i+1] for i in range(0, 9, 3)])    # Success
 
     def soft_reset(self):
-        """Я сознательно не стал использовать коменду perfom_factory_reset, чтобы было невозможно испортить датчик
+        """Я сознательно не стал использовать команду perfom_factory_reset, чтобы было невозможно испортить датчик
         программным путем, так-как количество циклов записи во внутреннюю FLASH память датчика ограничено!
         I deliberately did not use the perfom_factory_reset command, so that it would be impossible to spoil the
         sensor programmatically, since the number of write cycles to the internal FLASH memory of the
@@ -125,7 +139,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         self._send_command(cmd, None, 20)
 
     # On-chip output signal compensation
-    def set_temperature_offset(self, offset: float):
+    def set_temperature_offset(self, offset: float):    # вызов нужно делать только в IDLE режиме датчика!
         """Смещение температуры не влияет на точность измерения CO2 . Правильная установка смещения температуры SCD4x
         внутри пользовательского устройства позволяет пользователю использовать выходные сигналы RH и T. Обратите
         внимание, что смещение температуры может зависеть от различных факторов, таких как режим измерения SCD4x,
@@ -137,30 +151,39 @@ class SCD4xSensirion(BaseSensor, Iterator):
         inside the customer device correctly allows the user to leverage the RH and T output signal. Note that the
         temperature offset can depend on various factors such as the SCD4x measurement mode, self-heating of close
         components, the ambient temperature and air flow.
+        Метод нужно вызывать только в IDLE режиме датчика!
+        The method should be called only in IDLE sensor mode!
+
         𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_𝑎𝑐𝑡𝑢𝑎𝑙 = 𝑇 𝑆𝐶𝐷40 − 𝑇 𝑅𝑒𝑓𝑒𝑟𝑒𝑛𝑐𝑒 + 𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_ 𝑝𝑟𝑒𝑣𝑖𝑜𝑢𝑠"""
         cmd = 0x241D
-        offset_raw = int(374.49142857 * offset)
-        self._send_command(cmd, offset_raw.to_bytes(2, "big"), 1)
+        offset_raw = self._to_bytes(int(374.49142857 * offset), 2)
+        self._send_command(cmd, offset_raw, 1)
 
     def get_temperature_offset(self) -> float:
+        """Метод нужно вызывать только в IDLE режиме датчика!
+        The method should be called only in IDLE sensor mode!"""
         cmd = 0x2318
         b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         temp_offs = self.unpack("H", b)[0]
         return 0.0026702880859375 * temp_offs
 
-    def set_altitude(self, masl: int):
+    def set_altitude(self, masl: int):  # вызов нужно делать только в IDLE режиме датчика!
         """Чтение и запись высоты датчика должны выполняться, когда SCD4x находится в режиме ожидания.
         Как правило, высота датчика устанавливается один раз после установки устройства. Чтобы сохранить настройку
         в EEPROM, необходимо выполнить метод save_config. По умолчанию высота датчика установлена в
         0 метров над уровнем моря (masl).
         Reading and writing sensor height must be done when the SCD4x is in standby mode. As a rule, the height of the
         sensor is set once after the installation of the device. To save the configuration to EEPROM, you must execute
-        the save_config method. By default, the sensor height is set to 0 meters above sea level (masl)."""
+        the save_config method. By default, the sensor height is set to 0 meters above sea level (masl).
+        Метод нужно вызывать только в IDLE режиме датчика!
+        The method should be called only in IDLE sensor mode!"""
         cmd = 0x2427
-        masl_raw = masl.to_bytes(2, "big")
+        masl_raw = self._to_bytes(masl, 2)
         self._send_command(cmd, masl_raw, 1)
 
     def get_altitude(self) -> int:
+        """Метод нужно вызывать только в IDLE режиме датчика!
+        The method should be called only in IDLE sensor mode!"""
         cmd = 0x2322
         b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         return self.unpack("H", b)[0]
@@ -176,12 +199,50 @@ class SCD4xSensirion(BaseSensor, Iterator):
         on the previously set sensor height. The use of this command is highly recommended for applications with
         significant changes in ambient pressure to ensure sensor accuracy."""
         cmd = 0xE000
-        press_raw = int(pressure // 100).to_bytes(2, "big")     # Pascal // 100
+        press_raw = self._to_bytes(int(pressure // 100), 2)     # Pascal // 100
         self._send_command(cmd, press_raw, 1)
 
-    def periodic_measurement(self, start: bool):
+    # Field calibration
+    def force_recalibration(self, target_co2_concentration: int) -> int:
+        """Please read '3.7.1 perform_forced_recalibration'"""
+        base_sensor.check_value(target_co2_concentration, range(2**16),
+                                f"Invalid target CO2 concentration: {target_co2_concentration} ppm")
+        cmd = 0x362F
+        target_raw = self._to_bytes(target_co2_concentration, 2)
+        b = self._send_command(cmd, target_raw, 400, 3, crc_index=range(2, 3), value_index=(range(2),))
+        return self.unpack("h", b)[0]
+
+    def is_auto_calibration(self) -> bool:
+        """Please read '3.7.3 get_automatic_self_calibration_enabled'"""
+        cmd = 0x2313
+        b = self._send_command(cmd, None, 1, 3, crc_index=range(2, 3), value_index=(range(2),))
+        return 0 != self.unpack("H", b)[0]
+
+    def set_auto_calibration(self, value: bool):
+        """Please read '3.7.2 set_automatic_self_calibration_enabled'"""
+        cmd = 0x2416
+        value_raw = self._to_bytes(value, 2)
+        self._send_command(cmd, value_raw, 1, 3)
+
+    def set_measurement(self, start: bool, single_shot: bool = False, rht_only: bool = False):
+        """Используется для запуска или остановки периодических измерений. single_shot = False. rht_only не используется!
+        А также для запуска ОДНОКРАТНОГО измерения. single_shot = True. rht_only используется!
+        Если rht_only == True то датчик не вычисляет CO2 и оно будет равно нулю! Смотри метод get_meas_data()
+
+        Used to start or stop periodic measurements. single_shot = False. rht_only is not used!
+        And also to start a SINGLE measurement. single_shot = True. rht_only is used!
+        If rht_only == True then the sensor does not calculate CO2 and it will be zero! See get_meas_data() method"""
+        if single_shot:
+            return self._single_shot_meas(rht_only)
+        return self._periodic_measurement(start)
+
+    # Basic Commands
+    def _periodic_measurement(self, start: bool):
         """Start periodic measurement. In low power mode, signal update interval is approximately 30 seconds.
-        In normal power mode, signal update interval is approximately 5 seconds."""
+        In normal power mode, signal update interval is approximately 5 seconds.
+        If start == True then measurement started, else stopped.
+        Для чтения результатов используйте метод get_meas_data.
+        To read the results, use the get_meas_data method."""
         wt = 0
         if start:
             cmd = 0x21AC if self._low_power_mode else 0x21B1
@@ -189,19 +250,66 @@ class SCD4xSensirion(BaseSensor, Iterator):
             cmd = 0x3F86
             wt = 500
         self._send_command(cmd, None, wt)
+        self._single_shot_mode = False
+        self._rht_only = False
+
+    def get_meas_data(self) -> tuple:
+        """Чтение выходных данных датчика. Данные измерения могут быть считаны только один раз за интервал
+        обновления сигнала, так как буфер очищается при считывании. Смотри get_conversion_cycle_time()!
+        Read sensor data output. The measurement data can only be read out once per signal update interval
+        as the buffer is emptied upon read-out. See get_conversion_cycle_time()!"""
+        cmd = 0xEC05
+        val_index = (range(2), range(3, 5), range(6, 8))
+        b = self._send_command(cmd, None, 1, bytes_for_read=9,
+                               crc_index=range(2, 9, 3), value_index=val_index)
+        words =[self.unpack("H", b[val_rng.start:val_rng.stop])[0] for val_rng in val_index]
+        #       CO2 [ppm]           T, Celsius              Relative Humidity, %
+        return words[0], -45 + 0.0026703288 * words[1], 0.0015259022 * words[2]
 
     def is_data_ready(self) -> bool:
         """Return data ready status"""
         cmd = 0xE4B8
-        utime.sleep_ms(1)
-        b = self._read(3)
-        base_sensor.check_value(len(b), (3,), f"Invalid buffer length (is_data_ready): {len(b)}")
-        self._send_command(cmd, None, 1, 3, crc_index=range(2, 3), value_index=(range(2),))
+        b = self._send_command(cmd, None, 1, 3, crc_index=range(2, 3), value_index=(range(2),))
         return bool(self.unpack("H", b)[0] & 0b0000_0111_1111_1111)
+
+    @micropython.native
+    def get_conversion_cycle_time(self) -> int:
+        """Возвращает время преобразования данных датчиком в зависимости от его настроек. мс.
+        returns the data conversion time of the sensor, depending on its settings. ms."""
+        return 5000
+
+    # SCD41 only
+    def set_power(self, value: bool):
+        if not self._isSCD41:
+            return
+        """Please read '3.10.3 power_down' and '3.10.4 wake_up'"""
+        cmd = 0x36F6 if value else 0x36E0
+        wt = 20 if value else 1
+        self._send_command(cmd, None, wt)
+
+    def _single_shot_meas(self, rht_only: bool = False):
+        """Only for SCD41. Single shot measurement!
+        Запускает измерение температуры и относительной влажности!
+        После вызова этого метода, результаты будут готовы примерно через 5 секунд!
+        Для чтения результатов используйте метод get_meas_data. Содержание CO2 будет равно нулю!
+        After calling this method, the results will be ready in about 5 seconds!
+        To read the results, use the get_meas_data method.
+        SCD41 features a single shot measurement mode, i.e. allows for on-demand measurements.
+        Please see '3.10 Low power single shot (SCD41)'"""
+        if not self._isSCD41:
+            return
+        cmd = 0x2196 if rht_only else 0x219D
+        self._send_command(cmd, None, 0)
+        self._single_shot_mode = True
+        self._rht_only = rht_only
 
     # Iterator
     def __iter__(self):
         return self
 
-    def __next__(self):
-        pass
+    def __next__(self) -> [tuple, None]:
+        if self._single_shot_mode:
+            return None
+        if self.is_data_ready():
+            return self.get_meas_data()
+        return None
