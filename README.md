@@ -25,7 +25,7 @@ and sensor_pack folder. Then open main.py in your IDE and run it.
 Очень похоже, что в режиме периодического измерения датчик самоподогревается!
 Рекомендую переводить датчик в режим однократного измерения с периодом измерения не менее 15 секунд!
 
-Self heating
+# Self heating
 During periodic measurement (data reading period of 5 seconds), I detected a suspicious 
 increase in temperature read from the sensor.
 When switching to single measurement mode with a period of 15 seconds, I saw a drop in temperature.
