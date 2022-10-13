@@ -27,8 +27,8 @@ if __name__ == '__main__':
     t_offs = 0.0
     # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
     # Otherwise an EIO exception will be raised!
-    print(f"Set temperature offset sensor to {t_offs} Celsius")
-    sen.set_temperature_offset(t_offs)
+    # print(f"Set temperature offset sensor to {t_offs} Celsius")
+    # sen.set_temperature_offset(t_offs)
     t_offs = sen.get_temperature_offset()
     print(f"Get temperature offset from sensor: {t_offs} Celsius")
     masl = 160
@@ -41,6 +41,11 @@ if __name__ == '__main__':
         print("Measurement data can be read!")  # Данные измерений могут быть прочитаны!
     else:
         print("Measurement data missing!")
+    
+    if sen.is_auto_calibration():
+        print("The automatic self-calibration is ON!")
+    else:
+        print("The automatic self-calibration is OFF!")
 
     sen.set_measurement(start=True, single_shot=False)
     wt = sen.get_conversion_cycle_time()
@@ -52,9 +57,21 @@ if __name__ == '__main__':
     
     print(20*"*_")
     print("Reading using an iterator!")
-    for items in sen:
+    for counter, items in enumerate(sen):
         utime.sleep_ms(wt)
         if items:
             co2, t, rh = items
             print(f"CO2: {co2}; T: {t}; RH: {rh}")
-        
+            if 5 == counter:
+                break
+
+    print(20 * "*_")
+    print("Using single shot mode!")
+    # Force return sensor in IDLE mode!
+    # Принудительно перевожу датчик в режим IDLE!
+    sen.set_measurement(start=False, single_shot=False)
+    while True:
+        sen.set_measurement(start=False, single_shot=True, rht_only=False)
+        utime.sleep_ms(3 * wt)      # 3x period
+        co2, t, rh = sen.get_meas_data()
+        print(f"CO2: {co2}; T: {t}; RH: {rh}")
