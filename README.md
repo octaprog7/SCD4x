@@ -19,3 +19,18 @@ and sensor_pack folder. Then open main.py in your IDE and run it.
 ## Breadboard
 ![alt text](https://github.com/octaprog7/SCD4x/blob/master/scd4x_board.jpg)
 
+# Самоподогрев
+При периодическом измерении (период считывания данных 5 секунд) я обраружил подозрительный рост температуры, 
+считываемой с датчика. При переходе в режим однократного измерения с периодом 15 секунд, я увидел падение температуры. 
+Очень похоже, что в режиме периодического измерения датчик самоподогревается!
+Рекомендую переводить датчик в режим однократного измерения с периодом измерения не менее 15 секунд!
+
+Self heating
+During periodic measurement (data reading period of 5 seconds), I detected a suspicious 
+increase in temperature read from the sensor.
+When switching to single measurement mode with a period of 15 seconds, I saw a drop in temperature.
+It looks like the sensor is self-heating in the periodic measurement mode!
+I recommend switching the sensor to single measurement mode with a period of at least 15 seconds!
+
+## Self heating picture
+![alt text](https://github.com/octaprog7/SCD4x/blob/master/self_heat.png)
