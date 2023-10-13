@@ -1,4 +1,4 @@
-import utime
+import time
 
 from scd4x_sensirion import SCD4xSensirion
 from machine import I2C
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     # Принудительно перевожу датчик в режим IDLE!
     sen.set_measurement(start=False, single_shot=False)
     sid = sen.get_id()
-    print(f"Sensor id 3 x Word: {sid}")
+    print(f"Sensor id 3 x Word: {sid[0]:x}:{sid[1]:x}:{sid[2]:x}")
     t_offs = 0.0
     # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
     # Otherwise an EIO exception will be raised!
@@ -49,19 +49,20 @@ if __name__ == '__main__':
 
     sen.set_measurement(start=True, single_shot=False)
     wt = sen.get_conversion_cycle_time()
+    print(f"conversion cycle time [ms]: {wt}")
     print("Periodic measurement started")
     for i in range(5):
-        utime.sleep_ms(wt)
+        time.sleep_ms(wt)
         co2, t, rh = sen.get_meas_data()
-        print(f"CO2: {co2}; T: {t}; RH: {rh}")
+        print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
     
     print(20*"*_")
     print("Reading using an iterator!")
     for counter, items in enumerate(sen):
-        utime.sleep_ms(wt)
+        time.sleep_ms(wt)
         if items:
             co2, t, rh = items
-            print(f"CO2: {co2}; T: {t}; RH: {rh}")
+            print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
             if 5 == counter:
                 break
 
@@ -72,6 +73,6 @@ if __name__ == '__main__':
     sen.set_measurement(start=False, single_shot=False)
     while True:
         sen.set_measurement(start=False, single_shot=True, rht_only=False)
-        utime.sleep_ms(3 * wt)      # 3x period
+        time.sleep_ms(3 * wt)      # 3x period
         co2, t, rh = sen.get_meas_data()
-        print(f"CO2: {co2}; T: {t}; RH: {rh}")
+        print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")

@@ -5,7 +5,7 @@ from sensor_pack.base_sensor import BaseSensor, Iterator
 from sensor_pack import base_sensor
 from sensor_pack.crc_mod import crc8
 import micropython
-import utime
+import time
 
 
 def _calc_crc(sequence) -> int:
@@ -26,6 +26,8 @@ class SCD4xSensirion(BaseSensor, Iterator):
         If this_is_scd41 == True then methods for SCD41 will be available,
         otherwise GENERAL methods for SCD40/41 will be available!"""
         super().__init__(adapter, address, True)    # Big Endian
+        self._buf_3 = bytearray((0 for _ in range(3)))
+        self._buf_9 = bytearray((0 for _ in range(9)))
         self.check_crc = check_crc
         # power mode
         self._low_power_mode = False
@@ -36,15 +38,29 @@ class SCD4xSensirion(BaseSensor, Iterator):
         # сохраняю, чтобы не вызывать 125 раз
         self.byte_order = self._get_byteorder_as_str()
 
+    def _get_local_buf(self, bytes_for_read: int) -> [None, bytearray]:
+        """возвращает локальный буфер для операции чтения"""
+        if bytes_for_read not in (0, 3, 9):
+            raise ValueError(f"Invalid value for bytes_for_read: {bytes_for_read}")
+        if not bytes_for_read:
+            return None
+        if 3 == bytes_for_read:
+            return self._buf_3
+        return self._buf_9
+
     def _to_bytes(self, value, length: int):
         byteorder = self.byte_order[0]
         return value.to_bytes(length, byteorder)
 
-    def _read(self, n_bytes: int) -> bytes:
-        return self.adapter.read(self.address, n_bytes)
+    #def _read(self, n_bytes: int) -> bytes:
+    #    return self.adapter.read(self.address, n_bytes)
 
     def _write(self, buf: bytes) -> bytes:
         return self.adapter.write(self.address, buf)
+
+    def _readfrom_into(self, buf):
+        """Читает из устройства в буфер"""
+        return self.adapter.readfrom_into(self.address, buf)
 
     def _send_command(self, cmd: int, value: [bytes, None],
                       wait_time: int = 0, bytes_for_read: int = 0,
@@ -59,6 +75,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         crc_index_range - индексы crc в последовательности.
         value_index_ranges- кортеж индексов (range) данных значений в
         последовательности. (range(3), range(4,6), range(7,9))"""
+        # print(f"DBG: bytes_for_read: {bytes_for_read}")
         raw_cmd = self._to_bytes(cmd, 2)
         raw_out = raw_cmd
         if value:
@@ -66,10 +83,12 @@ class SCD4xSensirion(BaseSensor, Iterator):
             raw_out += self._to_bytes(_calc_crc(value), 1)     # crc считается только для данных!
         self._write(raw_out)    # выдача на шину
         if wait_time:
-            utime.sleep_ms(wait_time)   # ожидание
+            time.sleep_ms(wait_time)   # ожидание
         if not bytes_for_read:
             return None
-        b = self._read(bytes_for_read)  # читаю с шины с проверкой количества считанных байт
+        # b = self._read(bytes_for_read)  # читаю с шины с проверкой количества считанных байт
+        b = self._get_local_buf(bytes_for_read)
+        self._readfrom_into(b)      # обновление
         base_sensor.check_value(len(b), (bytes_for_read,),
                                 f"Invalid buffer length for cmd: {cmd}. Received {len(b)} out of {bytes_for_read}")
         if self.check_crc:
@@ -263,7 +282,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         val_index = (range(2), range(3, 5), range(6, 8))
         b = self._send_command(cmd, None, 1, bytes_for_read=9,
                                crc_index=range(2, 9, 3), value_index=val_index)
-        words =[self.unpack("H", b[val_rng.start:val_rng.stop])[0] for val_rng in val_index]
+        words = [self.unpack("H", b[val_rng.start:val_rng.stop])[0] for val_rng in val_index]
         #       CO2 [ppm]           T, Celsius              Relative Humidity, %
         return words[0], -45 + 0.0026703288 * words[1], 0.0015259022 * words[2]
 
@@ -277,6 +296,8 @@ class SCD4xSensirion(BaseSensor, Iterator):
     def get_conversion_cycle_time(self) -> int:
         """Возвращает время преобразования данных датчиком в зависимости от его настроек. мс.
         returns the data conversion time of the sensor, depending on its settings. ms."""
+        if self.is_single_shot_mode and self.is_rht_only:
+            return 50
         return 5000
 
     # SCD41 only
@@ -303,6 +324,14 @@ class SCD4xSensirion(BaseSensor, Iterator):
         self._send_command(cmd, None, 0)
         self._single_shot_mode = True
         self._rht_only = rht_only
+
+    @property
+    def is_single_shot_mode(self) -> bool:
+        return self._single_shot_mode
+
+    @property
+    def is_rht_only(self) -> bool:
+        return self._rht_only
 
     # Iterator
     def __iter__(self):

@@ -1,4 +1,8 @@
-"""реализация вычисление CRC
+"""
+MIT License
+Copyright (c) 2022 Roman Shevchik
+
+реализация вычисление CRC
  8 бит
  полином 0x31 (x^8 + x^5 + x^4 + 1)
  начальное значение 0xFF
@@ -13,7 +17,7 @@
     CRC-8: 0x52"""
 
 
-def crc8(sequence, polynomial: int, init_value: int = 0x00) -> int:
+def crc8(sequence, polynomial: int, init_value: int = 0x00):
     mask = 0xFF
     crc = init_value & mask
     for item in sequence:
