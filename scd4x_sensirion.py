@@ -52,7 +52,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         byteorder = self.byte_order[0]
         return value.to_bytes(length, byteorder)
 
-    #def _read(self, n_bytes: int) -> bytes:
+    # def _read(self, n_bytes: int) -> bytes:
     #    return self.adapter.read(self.address, n_bytes)
 
     def _write(self, buf: bytes) -> bytes:
@@ -96,7 +96,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
             calculated_crc = [_calc_crc(b[rng.start:rng.stop]) for rng in value_index]
             if crc_from_buf != calculated_crc:
                 raise ValueError(f"Invalid CRC! Calculated{calculated_crc}. From buffer {crc_from_buf}")
-        return b    # возврат считанного bytearray
+        return b    # возврат bytearray со считанными данными
 
     # BaseSensor
     # Advanced features
@@ -248,10 +248,12 @@ class SCD4xSensirion(BaseSensor, Iterator):
         single_shot = False. rht_only не используется!
         А также для запуска ОДНОКРАТНОГО измерения. single_shot = True. rht_only используется!
         Если rht_only == True то датчик не вычисляет CO2 и оно будет равно нулю! Смотри метод get_meas_data()
+        start используется только при False == single_shot (periodic mode)
 
         Used to start or stop periodic measurements. single_shot = False. rht_only is not used!
         And also to start a SINGLE measurement. single_shot = True. rht_only is used!
-        If rht_only == True then the sensor does not calculate CO2 and it will be zero! See get_meas_data() method"""
+        If rht_only == True then the sensor does not calculate CO2 and it will be zero! See get_meas_data() method
+        start is used only when False == single_shot (periodic mode)"""
         if single_shot:
             return self._single_shot_meas(rht_only)
         return self._periodic_measurement(start)
@@ -313,7 +315,7 @@ class SCD4xSensirion(BaseSensor, Iterator):
         """Only for SCD41. Single shot measurement!
         Запускает измерение температуры и относительной влажности!
         После вызова этого метода, результаты будут готовы примерно через 5 секунд!
-        Для чтения результатов используйте метод get_meas_data. Содержание CO2 будет равно нулю!
+        Для чтения результатов используйте метод get_meas_data. Содержание CO2 будет равно нулю, если true == rht_only!
         After calling this method, the results will be ready in about 5 seconds!
         To read the results, use the get_meas_data method.
         SCD41 features a single shot measurement mode, i.e. allows for on-demand measurements.

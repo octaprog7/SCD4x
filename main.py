@@ -24,14 +24,14 @@ if __name__ == '__main__':
     sen.set_measurement(start=False, single_shot=False)
     sid = sen.get_id()
     print(f"Sensor id 3 x Word: {sid[0]:x}:{sid[1]:x}:{sid[2]:x}")
-    t_offs = 0.0
+    # t_offs = 0.0
     # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
     # Otherwise an EIO exception will be raised!
     # print(f"Set temperature offset sensor to {t_offs} Celsius")
     # sen.set_temperature_offset(t_offs)
     t_offs = sen.get_temperature_offset()
     print(f"Get temperature offset from sensor: {t_offs} Celsius")
-    masl = 160
+    masl = 160  # Meter Above Sea Level
     print(f"Set my place M.A.S.L. to {masl} meter")
     sen.set_altitude(masl)
     masl = sen.get_altitude()
@@ -47,11 +47,13 @@ if __name__ == '__main__':
     else:
         print("The automatic self-calibration is OFF!")
 
-    sen.set_measurement(start=True, single_shot=False)
+    sen.set_measurement(start=True, single_shot=False)      # periodic start
     wt = sen.get_conversion_cycle_time()
     print(f"conversion cycle time [ms]: {wt}")
     print("Periodic measurement started")
-    for i in range(5):
+    repeat = 5
+    multiplier = 2
+    for i in range(repeat):
         time.sleep_ms(wt)
         co2, t, rh = sen.get_meas_data()
         print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
@@ -63,7 +65,7 @@ if __name__ == '__main__':
         if items:
             co2, t, rh = items
             print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
-            if 5 == counter:
+            if repeat == counter:
                 break
 
     print(20 * "*_")
@@ -71,8 +73,26 @@ if __name__ == '__main__':
     # Force return sensor in IDLE mode!
     # Принудительно перевожу датчик в режим IDLE!
     sen.set_measurement(start=False, single_shot=False)
+    cnt = 0
     while True:
         sen.set_measurement(start=False, single_shot=True, rht_only=False)
-        time.sleep_ms(3 * wt)      # 3x period
+        time.sleep_ms(multiplier * wt)      # 3x period
         co2, t, rh = sen.get_meas_data()
         print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
+        cnt += 1
+        if cnt > repeat:
+            break
+
+    # Принудительно перевожу датчик в режим IDLE!
+    # sen.set_measurement(start=False, single_shot=False)
+    sen.set_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!
+    wt = sen.get_conversion_cycle_time()
+    print(20 * "*_")
+    # Использование режима измерения по запросу! Только относительная влажность и температура измеряются датчиком!
+    # относительная влажность + температура. CO2 всегда равна нулю или не изменяется!!
+    print("Using single shot mode! RH + T only! (Temp + RH. CO2 always zero or does not change!!)")
+    while True:
+        time.sleep_ms(multiplier * wt)      # 3x period
+        co2, t, rh = sen.get_meas_data()
+        print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
+        sen.set_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!
