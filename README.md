@@ -34,3 +34,7 @@ I recommend switching the sensor to single measurement mode with a period of at 
 
 ## Self heating picture
 ![alt text](https://github.com/octaprog7/SCD4x/blob/master/self_heat.png)
+
+# Autocalibration problem
+The person expressed a useful idea in my opinion. You can read it at the [link](https://www.reddit.com/r/esp32/comments/12y0x5k/warning_about_the_sensirion_scd4041_co2_sensors/).
+Человек высказал, на мой взгляд, полезную мысль. С ней вы можете ознакомится по [тут](https://www.reddit.com/r/esp32/comments/12y0x5k/warning_about_the_sensirion_scd4041_co2_sensors/).
