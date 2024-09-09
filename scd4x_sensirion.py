@@ -131,8 +131,10 @@ class SCD4xSensirion(BaseSensor, Iterator):
         программным путем, так-как количество циклов записи во внутреннюю FLASH память датчика ограничено!
         I deliberately did not use the perfom_factory_reset command, so that it would be impossible to spoil the
         sensor programmatically, since the number of write cycles to the internal FLASH memory of the
-        sensor is limited!"""
-        return None
+        sensor is limited!
+        09.09.2024. Добавил. Под вашу ответственность!"""
+        cmd = 0x3632
+        self._send_command(cmd, None, 1200)
 
     def exec_self_test(self) -> bool:
         """"Этот метод можно использовать в качестве конечного теста для проверки работоспособности датчика и
