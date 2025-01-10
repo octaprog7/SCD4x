@@ -1,8 +1,8 @@
 import time
 
 from scd4x_sensirion import SCD4xSensirion
-from machine import I2C
-from sensor_pack.bus_service import I2cAdapter
+from machine import I2C, Pin
+from sensor_pack_2.bus_service import I2cAdapter
 
 
 if __name__ == '__main__':
@@ -11,19 +11,15 @@ if __name__ == '__main__':
     # https://docs.micropython.org/en/latest/library/machine.I2C.html#machine-i2c
     # i2c = I2C(0, scl=Pin(13), sda=Pin(12), freq=400_000) # для примера
     # bus =  I2C(scl=Pin(4), sda=Pin(5), freq=100000)   # на esp8266    !
-    # Внимание!!!
-    # Замените id=1 на id=0, если пользуетесь первым портом I2C !!!
-    # Warning!!!
-    # Replace id=1 with id=0 if you are using the first I2C port !!!
-    i2c = I2C(id=1, freq=400_000)  # on Arduino Nano RP2040 Connect tested
+    i2c = I2C(id=1, scl=Pin(7), sda=Pin(6), freq=400_000)
     adaptor = I2cAdapter(i2c)
     # sensor
     sen = SCD4xSensirion(adaptor)
     # Force return sensor in IDLE mode!
     # Принудительно перевожу датчик в режим IDLE!
-    sen.set_measurement(start=False, single_shot=False)
+    sen.start_measurement(start=False, single_shot=False)
     sid = sen.get_id()
-    print(f"Sensor id 3 x Word: {sid[0]:x}:{sid[1]:x}:{sid[2]:x}")
+    print(f"Sensor id: {sid}")
     # t_offs = 0.0
     # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
     # Otherwise an EIO exception will be raised!
@@ -37,17 +33,20 @@ if __name__ == '__main__':
     masl = sen.get_altitude()
     print(f"Get M.A.S.L. from sensor: {masl} meter")
     # data ready
-    if sen.is_data_ready():
+    if sen.get_data_status():
         print("Measurement data can be read!")  # Данные измерений могут быть прочитаны!
     else:
         print("Measurement data missing!")
+    
+    # отключаю автоматическую калибровку! Для искусственных помещений (indoor) она должна быть отключена!
+    sen.set_auto_calibration(value=False)
     
     if sen.is_auto_calibration():
         print("The automatic self-calibration is ON!")
     else:
         print("The automatic self-calibration is OFF!")
 
-    sen.set_measurement(start=True, single_shot=False)      # periodic start
+    sen.start_measurement(start=True, single_shot=False)      # periodic start
     wt = sen.get_conversion_cycle_time()
     print(f"conversion cycle time [ms]: {wt}")
     print("Periodic measurement started")
@@ -55,44 +54,50 @@ if __name__ == '__main__':
     multiplier = 2
     for i in range(repeat):
         time.sleep_ms(wt)
-        co2, t, rh = sen.get_meas_data()
-        print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
+        _meas_data = sen.get_measurement_value()
+        print(f"{_meas_data}")
     
-    print(20*"*_")
+    print(20 * "_")
+    if sen.is_single_shot_mode():
+        print("Single shot mode!")
+    if sen.is_continuously_mode():
+        print("Continuously mode!")
+    print(20 * "_")
     print("Reading using an iterator!")
-    for counter, items in enumerate(sen):
+    for counter, _meas_data in enumerate(sen):
         time.sleep_ms(wt)
-        if items:
-            co2, t, rh = items
-            print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
-            if repeat == counter:
-                break
+        if not _meas_data is None:
+            print(f"CO2 [ppm]: {_meas_data.CO2}; T [°C]: {_meas_data.T}; RH [%]: {_meas_data.RH}")
+        else:
+            print("Measurement data missing!")
+        if repeat == counter:
+            break
 
     print(20 * "*_")
     print("Using single shot mode!")
     # Force return sensor in IDLE mode!
     # Принудительно перевожу датчик в режим IDLE!
-    sen.set_measurement(start=False, single_shot=False)
+    sen.start_measurement(start=False, single_shot=False)
     cnt = 0
     while True:
-        sen.set_measurement(start=False, single_shot=True, rht_only=False)
+        sen.start_measurement(start=False, single_shot=True, rht_only=False)
         time.sleep_ms(multiplier * wt)      # 3x period
-        co2, t, rh = sen.get_meas_data()
-        print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
+        _meas_data = sen.get_measurement_value()
+        print(f"CO2 [ppm]: {_meas_data.CO2}; T [°C]: {_meas_data.T}; RH [%]: {_meas_data.RH}")
         cnt += 1
         if cnt > repeat:
             break
 
     # Принудительно перевожу датчик в режим IDLE!
     # sen.set_measurement(start=False, single_shot=False)
-    sen.set_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!
+    sen.start_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!
     wt = sen.get_conversion_cycle_time()
     print(20 * "*_")
     # Использование режима измерения по запросу! Только относительная влажность и температура измеряются датчиком!
-    # относительная влажность + температура. CO2 всегда равна нулю или не изменяется!!
+    # относительная влажность + температура. CO2 равна нулю или не изменяется!!!
     print("Using single shot mode! RH + T only! (Temp + RH. CO2 always zero or does not change!!)")
     while True:
         time.sleep_ms(multiplier * wt)      # 3x period
-        co2, t, rh = sen.get_meas_data()
-        print(f"CO2 [ppm]: {co2}; T [°C]: {t}; RH [%]: {rh}")
-        sen.set_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!
+        _meas_data = sen.get_measurement_value()
+        print(f"CO2 [ppm]: {_meas_data.CO2}; T [°C]: {_meas_data.T}; RH [%]: {_meas_data.RH}")
+        sen.start_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!

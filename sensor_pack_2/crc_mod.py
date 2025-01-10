@@ -17,7 +17,7 @@ Copyright (c) 2022 Roman Shevchik
     CRC-8: 0x52"""
 
 
-def crc8(sequence, polynomial: int, init_value: int = 0x00):
+def crc8(sequence: bytes, polynomial: int, init_value: int = 0x00, final_xor = 0x00):
     mask = 0xFF
     crc = init_value & mask
     for item in sequence:
@@ -27,4 +27,4 @@ def crc8(sequence, polynomial: int, init_value: int = 0x00):
                 crc = mask & ((crc << 1) ^ polynomial)
             else:
                 crc = mask & (crc << 1)
-    return crc
+    return crc ^ final_xor
