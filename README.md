@@ -39,4 +39,8 @@ I recommend switching the sensor to single measurement mode with a period of at 
 
 The person expressed a useful idea in my opinion. You can read it at the [link](https://www.reddit.com/r/esp32/comments/12y0x5k/warning_about_the_sensirion_scd4041_co2_sensors/).
 
-Человек высказал, на мой взгляд, полезную мысль. С ней вы можете ознакомится по [тут](https://www.reddit.com/r/esp32/comments/12y0x5k/warning_about_the_sensirion_scd4041_co2_sensors/).
+На мой взгляд, человек высказал полезную мысль: [тут](https://www.reddit.com/r/esp32/comments/12y0x5k/warning_about_the_sensirion_scd4041_co2_sensors/).
+
+## Note
+If you liked my software, please be generous and give it a star!
+Если вам понравилось мое программное обеспечение, пожалуйста, будьте щедры и поставьте ему звезду!
