@@ -1,0 +1,8 @@
+{
+  "urls": [
+    ["scd4x_sensirion.py", "github:octaprog7/SCD4x/scd4x_sensirion.py"],
+    ["sensor_pack_2/__init__.py", "github:octaprog7/SCD4x/sensor_pack_2/__init__.py"]
+  ],
+  "version": "1.0.0",
+  "deps": []
+}
