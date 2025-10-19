@@ -8,7 +8,7 @@ from machine import Pin
 
 
 @micropython.native
-def check_value(value: [int, None], valid_range: [range, tuple], error_msg: str) -> [int, None]:
+def check_value(value: int | None, valid_range: range | tuple, error_msg: str) -> int | None:
     if value is None:
         return value
     if value not in valid_range:
@@ -16,7 +16,7 @@ def check_value(value: [int, None], valid_range: [range, tuple], error_msg: str)
     return value
 
 
-def get_error_str(val_name: str, val: int, rng: [range, tuple]) -> str:
+def get_error_str(val_name: str, val: int, rng: range | tuple) -> str:
     """Возвращает подробное сообщение об ошибке.
     val_name - имя переменной в коде;
     val - значение переменной val_name;
@@ -39,7 +39,7 @@ def all_none(*args):
 class Device:
     """Класс - основа датчика"""
 
-    def __init__(self, adapter: bus_service.BusAdapter, address: [int, Pin], big_byte_order: bool):
+    def __init__(self, adapter: bus_service.BusAdapter, address: int | Pin, big_byte_order: bool):
         """Базовый класс Устройство.
         Если big_byte_order равен True -> порядок байтов в регистрах устройства «big»
         (Порядок от старшего к младшему), в противном случае порядок байтов в регистрах "little"
@@ -97,7 +97,7 @@ class DeviceEx(Device):
         return self.adapter.read_register(self.address, reg_addr, bytes_count)
 
     # BaseSensor
-    def write_reg(self, reg_addr: int, value: [int, bytes, bytearray], bytes_count) -> int:
+    def write_reg(self, reg_addr: int, value: int | bytes | bytearray, bytes_count) -> int:
         """записывает данные value в датчик, по адресу reg_addr.
         bytes_count - кол-во записываемых данных.
         Добавил 25.01.2024"""
@@ -141,20 +141,20 @@ class BaseSensor(Device):
     """Класс - основа датчика с дополнительными методами"""
 
     def get_id(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def soft_reset(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class BaseSensorEx(DeviceEx):
     """Класс - основа датчика"""
 
     def get_id(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def soft_reset(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class Iterator:
@@ -162,7 +162,7 @@ class Iterator:
         return self
 
     def __next__(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class ITemperatureSensor:
@@ -171,12 +171,12 @@ class ITemperatureSensor:
     def enable_temp_meas(self, enable: bool = True):
         """Включает измерение температуры при enable в Истина
         Для переопределения программистом!!!"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def get_temperature(self) -> [int, float]:
+    def get_temperature(self) -> int | float:
         """Возвращает температуру корпуса датчика в градусах Цельсия!
         Для переопределения программистом!!!"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 # 0 - устройство выполняет все свои функции (максимальное энергопотребление)
@@ -185,7 +185,7 @@ class ITemperatureSensor:
 class IPower:
     """интерфейс управления мощностью потребления устройства"""
 
-    def set_power_level(self, level: [int, None] = 0) -> int:
+    def set_power_level(self, level: int | None = 0) -> int:
         """level >=0 or None
         Устанавливает режим мощности.
         level равен 0 - устройство выполняет все свои функции (максимальное энергопотребление)
@@ -195,17 +195,17 @@ class IPower:
         Если значение из регистра устройства не совпадет со шкалой 0-все включено...максимум-все выключено, то
         преобразуйте его!
         """
-        raise NotImplemented
+        raise NotImplementedError()
 
 
 class IDentifier:
     """Интерфейс идентификации"""
 
     def get_id(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def soft_reset(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class IBaseSensorEx:
@@ -214,27 +214,27 @@ class IBaseSensorEx:
     def get_conversion_cycle_time(self) -> int:
         """Возвращает время в мс или мкс преобразования сигнала в цифровой код и готовности его для чтения по шине!
         Для текущих настроек датчика. При изменении настроек следует заново вызвать этот метод!"""
-        raise NotImplemented
+        raise NotImplementedError()
 
     def start_measurement(self):
         """Настраивает параметры датчика и запускает процесс измерения"""
-        raise NotImplemented
+        raise NotImplementedError()
 
     def get_measurement_value(self, value_index: int):
         """Возвращает измеренное датчиком значение(значения) по его индексу/номеру."""
-        raise NotImplemented
+        raise NotImplementedError()
 
     def get_data_status(self):
         """Возвращает состояние готовности данных для считывания?
         Тип возвращаемого значения выбирайте сами!"""
-        raise NotImplemented
+        raise NotImplementedError()
 
     def is_single_shot_mode(self) -> bool:
         """Возвращает Истина, когда датчик находится в режиме однократных измерений,
         каждое из которых запускается методом start_measurement"""
-        raise NotImplemented
+        raise NotImplementedError()
 
     def is_continuously_mode(self) -> bool:
         """Возвращает Истина, когда датчик находится в режиме многократных измерений,
         производимых автоматически. Процесс запускается методом start_measurement"""
-        raise NotImplemented
+        raise NotImplementedError()
