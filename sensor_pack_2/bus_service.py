@@ -17,42 +17,42 @@ def mpy_bl(value: int) -> int:
 
 class BusAdapter:
     """Посредник между шиной ввода/вывода и классом ввода/вывода устройства"""
-    def __init__(self, bus: [I2C, SPI]):
+    def __init__(self, bus: I2C | SPI):
         self.bus = bus
 
     def get_bus_type(self) -> type:
         """Возвращает тип шины"""
         return type(self.bus)
 
-    def read_register(self, device_addr: [int, Pin], reg_addr: int, bytes_count: int) -> bytes:
+    def read_register(self, device_addr: int | Pin, reg_addr: int, bytes_count: int) -> bytes:
         """считывает из регистра датчика значение.
         device_addr - адрес датчика на шине. Для шины SPI это физический вывод MCU!
         reg_addr - адрес регистра в адресном пространстве датчика.
         bytes_count - размер значения в байтах."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def write_register(self, device_addr: [int, Pin], reg_addr: int, value: [int, bytes, bytearray],
+    def write_register(self, device_addr: int | Pin, reg_addr: int, value: int | bytes | bytearray,
                        bytes_count: int, byte_order: str):
         """записывает данные value в датчик, по адресу reg_addr.
         bytes_count - кол-во записываемых байт из value.
         byte_order - порядок расположения байт в записываемом значении."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def read(self, device_addr: [int, Pin], n_bytes: int) -> bytes:
+    def read(self, device_addr: int | Pin, n_bytes: int) -> bytes:
         """Читает из устройства на шине с адресом device_addr, n_bytes байт.
         Возвращает экземпляр класса типа bytes"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def read_to_buf(self, device_addr: [int, Pin], buf: bytearray) -> bytes:
+    def read_to_buf(self, device_addr: int | Pin, buf: bytearray) -> bytes:
         """Читает из устройства на шине, с адресом device_addr, кол-во байт, равное длине буфера buf.
         Возвращает ссылку на buf"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def write(self, device_addr: [int, Pin], buf: bytes):
+    def write(self, device_addr: int | Pin, buf: bytes):
         """Записывает в устройство на шине все байты из буфера buf"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def write_const(self, device_addr: [int, Pin], val: int, count: int):
+    def write_const(self, device_addr: int | Pin, val: int, count: int):
         """Отправляет пакет байт со значение val количеством count на шину.
         Часто, при работе с дисплеями или памятью, требуется заполнение экрана/области
         постоянным значением. Для этого и предназначен этот метод!
@@ -77,15 +77,15 @@ class BusAdapter:
             b = bytearray([val for _ in range(remainder)])
             self.write(device_addr, b)
 
-    def read_buf_from_memory(self, device_addr: [int, Pin], mem_addr, buf, address_size: int):
+    def read_buf_from_memory(self, device_addr: int | Pin, mem_addr, buf, address_size: int):
         """Читает из устройства с адресом device_addr в буфер buf, начиная с адреса в устройстве mem_addr.
         Количество считываемых байт определяется длинной буфера buf.
         address_size - определяет размер адреса в байтах. (в ESP8266 этот аргумент не
         распознается и размер адреса всегда равен 1 (8 бит))."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def write_buf_to_memory(self, device_addr: [int, Pin], mem_addr, buf):
-        raise NotImplementedError
+    def write_buf_to_memory(self, device_addr: int | Pin, mem_addr, buf):
+        raise NotImplementedError()
 
 
 class I2cAdapter(BusAdapter):
@@ -93,7 +93,7 @@ class I2cAdapter(BusAdapter):
     def __init__(self, bus: I2C):
         super().__init__(bus)
 
-    def write_register(self, device_addr: int, reg_addr: int, value: [int, bytes, bytearray],
+    def write_register(self, device_addr: int, reg_addr: int, value: int | bytes | bytearray,
                        bytes_count: int, byte_order: str):
         """записывает данные value в датчик, по адресу reg_addr.
         bytes_count - кол-во записываемых данных
@@ -233,7 +233,7 @@ class SpiAdapter(BusAdapter):
         try:
             device_addr.value(0)  # chip select
             # пока нет реализации!!!
-            raise NotImplementedError
+            raise NotImplementedError()
         finally:
             device_addr.value(1)
 
@@ -243,6 +243,6 @@ class SpiAdapter(BusAdapter):
             # подготовка буфера к пересылке
             self._call_prepare(buf)
             # пока нет реализации!!!
-            raise NotImplementedError
+            raise NotImplementedError()
         finally:
             device_addr.value(1)
