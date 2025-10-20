@@ -22,7 +22,7 @@ if __name__ == '__main__':
     print(f"Sensor id: {sid}")
     # t_offs = 0.0
     # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
-    # Otherwise an EIO exception will be raised!
+    # Otherwise, an EIO exception will be raised!
     # print(f"Set temperature offset sensor to {t_offs} Celsius")
     # sen.set_temperature_offset(t_offs)
     t_offs = sen.get_temperature_offset()
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     print(f"conversion cycle time [ms]: {wt}")
     print("Periodic measurement started")
     repeat = 10
-    multiplier = 2
+    multiplier = 1
     for i in range(repeat):
         time.sleep_ms(wt)
         _meas_data = sen.get_measurement_value()
