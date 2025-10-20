@@ -50,7 +50,7 @@ if __name__ == '__main__':
     wt = sen.get_conversion_cycle_time()
     print(f"conversion cycle time [ms]: {wt}")
     print("Periodic measurement started")
-    repeat = 50
+    repeat = 10
     multiplier = 2
     for i in range(repeat):
         time.sleep_ms(wt)
