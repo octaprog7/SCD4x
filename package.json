@@ -1,7 +1,12 @@
 {
   "urls": [
     ["scd4x_sensirion.py", "github:octaprog7/SCD4x/scd4x_sensirion.py"],
-    ["sensor_pack_2/__init__.py", "github:octaprog7/SCD4x/sensor_pack_2/__init__.py"]
+    ["main.py", "github:octaprog7/SCD4x/main.py"],
+    ["package.json", "github:octaprog7/SCD4x/package.json"],
+    ["sensor_pack_2/__init__.py", "github:octaprog7/SCD4x/sensor_pack_2/__init__.py"],
+    ["sensor_pack_2/base_sensor.py", "github:octaprog7/SCD4x/sensor_pack_2/base_sensor.py"],
+    ["sensor_pack_2/bus_service.py", "github:octaprog7/SCD4x/sensor_pack_2/bus_service.py"],
+    ["sensor_pack_2/crc_mod.py", "github:octaprog7/SCD4x/sensor_pack_2/crc_mod.py"]
   ],
   "version": "1.0.0",
   "deps": []
