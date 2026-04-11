@@ -282,8 +282,9 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         b = self._send_command(cmd, None, 1, bytes_for_read=9,
                                crc_index=range(2, 9, 3), value_index=val_index)
         words = [self._connection.unpack(_str_H, b[val_rng.start:val_rng.stop])[0] for val_rng in val_index]
+        co2_ppm = 0 if self._rht_only else words[0]
         #       CO2 [ppm]           T, Celsius              Relative Humidity, %
-        return measured_values_scd4x(CO2=words[0], T=self.TEMP_OFFSET + self.TEMP_SCALE * words[1], RH=self.RH_SCALE * words[2])
+        return measured_values_scd4x(CO2=co2_ppm, T=self.TEMP_OFFSET + self.TEMP_SCALE * words[1], RH=self.RH_SCALE * words[2])
 
     def get_data_status(self) -> bool:
         """Возвращает Истина, когда данные готовы для считывания."""
