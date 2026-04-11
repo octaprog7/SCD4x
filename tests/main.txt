@@ -1,0 +1,87 @@
+Sensor id: serial_number_scd4x(word_0=59149, word_1=38663, word_2=15247)
+Get temperature offset from sensor: 4.000092 Celsius
+Set my place M.A.S.L. to 160 meter
+Get M.A.S.L. from sensor: 160 meter
+Measurement data missing!
+The automatic self-calibration is OFF!
+conversion cycle time [ms]: 5000
+Periodic measurement started
+measured_values_scd4x(CO2=938, T=29.38889, RH=28.76892)
+measured_values_scd4x(CO2=936, T=29.37286, RH=29.20532)
+measured_values_scd4x(CO2=931, T=29.25003, RH=29.49677)
+measured_values_scd4x(CO2=923, T=29.11385, RH=29.79279)
+measured_values_scd4x(CO2=917, T=28.97232, RH=30.19257)
+measured_values_scd4x(CO2=912, T=28.82278, RH=30.54504)
+measured_values_scd4x(CO2=907, T=28.71597, RH=30.85632)
+measured_values_scd4x(CO2=903, T=28.57445, RH=31.11725)
+measured_values_scd4x(CO2=904, T=28.42491, RH=31.36444)
+measured_values_scd4x(CO2=903, T=28.33145, RH=31.56586)
+____________________
+Continuously mode!
+____________________
+Reading using an iterator!
+Measurement data missing!
+CO2 [ppm]: 903; T [°C]: 28.22731; RH [%]: 31.78711
+CO2 [ppm]: 902; T [°C]: 28.14987; RH [%]: 32.00531
+CO2 [ppm]: 902; T [°C]: 28.04039; RH [%]: 32.1579
+CO2 [ppm]: 900; T [°C]: 27.90955; RH [%]: 32.4173
+CO2 [ppm]: 898; T [°C]: 27.84012; RH [%]: 32.55005
+CO2 [ppm]: 898; T [°C]: 27.79205; RH [%]: 32.62329
+CO2 [ppm]: 898; T [°C]: 27.69325; RH [%]: 32.73621
+CO2 [ppm]: 897; T [°C]: 27.67723; RH [%]: 32.85522
+CO2 [ppm]: 896; T [°C]: 27.64252; RH [%]: 32.96356
+CO2 [ppm]: 894; T [°C]: 27.59712; RH [%]: 33.04749
+*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_
+Using single shot mode!
+CO2 [ppm]: 883; T [°C]: 26.86546; RH [%]: 34.56879
+CO2 [ppm]: 890; T [°C]: 26.75331; RH [%]: 34.53979
+CO2 [ppm]: 888; T [°C]: 26.80405; RH [%]: 34.53674
+CO2 [ppm]: 881; T [°C]: 26.82808; RH [%]: 34.45282
+CO2 [ppm]: 858; T [°C]: 26.86546; RH [%]: 34.45892
+CO2 [ppm]: 878; T [°C]: 26.90285; RH [%]: 34.39636
+CO2 [ppm]: 832; T [°C]: 26.90018; RH [%]: 34.31396
+CO2 [ppm]: 863; T [°C]: 26.93489; RH [%]: 34.2804
+CO2 [ppm]: 875; T [°C]: 26.93756; RH [%]: 34.31396
+CO2 [ppm]: 825; T [°C]: 26.9883; RH [%]: 34.21783
+CO2 [ppm]: 869; T [°C]: 26.97495; RH [%]: 34.25903
+*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_
+Using single shot mode! RH + T only! (Temp + RH. CO2 always zero or does not change!!)
+CO2 [ppm]: 0; T [°C]: 27.01767; RH [%]: 34.18579
+CO2 [ppm]: 0; T [°C]: 27.00699; RH [%]: 34.18274
+CO2 [ppm]: 0; T [°C]: 27.02301; RH [%]: 34.198
+CO2 [ppm]: 0; T [°C]: 27.015; RH [%]: 34.14307
+CO2 [ppm]: 0; T [°C]: 27.02835; RH [%]: 34.21173
+CO2 [ppm]: 0; T [°C]: 27.02301; RH [%]: 34.19037
+CO2 [ppm]: 0; T [°C]: 27.03903; RH [%]: 34.22241
+CO2 [ppm]: 0; T [°C]: 27.04971; RH [%]: 34.19495
+CO2 [ppm]: 0; T [°C]: 27.06039; RH [%]: 34.16595
+CO2 [ppm]: 0; T [°C]: 27.0417; RH [%]: 34.21783
+CO2 [ppm]: 0; T [°C]: 27.05772; RH [%]: 34.12476
+CO2 [ppm]: 0; T [°C]: 27.03903; RH [%]: 34.18274
+CO2 [ppm]: 0; T [°C]: 27.0417; RH [%]: 34.14764
+CO2 [ppm]: 0; T [°C]: 27.0417; RH [%]: 34.21021
+CO2 [ppm]: 0; T [°C]: 27.0417; RH [%]: 34.17816
+CO2 [ppm]: 0; T [°C]: 27.06573; RH [%]: 34.18732
+CO2 [ppm]: 0; T [°C]: 27.0417; RH [%]: 34.19342
+CO2 [ppm]: 0; T [°C]: 27.04971; RH [%]: 34.17816
+CO2 [ppm]: 0; T [°C]: 27.04704; RH [%]: 34.18427
+CO2 [ppm]: 0; T [°C]: 27.03903; RH [%]: 34.19189
+CO2 [ppm]: 0; T [°C]: 27.05505; RH [%]: 34.16901
+CO2 [ppm]: 0; T [°C]: 27.02301; RH [%]: 34.22241
+CO2 [ppm]: 0; T [°C]: 27.05505; RH [%]: 34.17664
+CO2 [ppm]: 0; T [°C]: 27.03102; RH [%]: 34.16748
+CO2 [ppm]: 0; T [°C]: 27.03369; RH [%]: 34.1629
+CO2 [ppm]: 0; T [°C]: 27.05505; RH [%]: 34.19952
+CO2 [ppm]: 0; T [°C]: 27.07108; RH [%]: 34.15375
+CO2 [ppm]: 0; T [°C]: 27.03903; RH [%]: 34.18274
+CO2 [ppm]: 0; T [°C]: 27.03903; RH [%]: 34.16748
+CO2 [ppm]: 0; T [°C]: 27.0417; RH [%]: 34.15527
+CO2 [ppm]: 0; T [°C]: 27.02568; RH [%]: 34.17053
+CO2 [ppm]: 0; T [°C]: 27.02301; RH [%]: 34.12781
+CO2 [ppm]: 0; T [°C]: 27.015; RH [%]: 34.198
+CO2 [ppm]: 0; T [°C]: 27.015; RH [%]: 34.16748
+CO2 [ppm]: 0; T [°C]: 27.03102; RH [%]: 34.17511
+CO2 [ppm]: 0; T [°C]: 27.02835; RH [%]: 34.17969
+CO2 [ppm]: 0; T [°C]: 27.00966; RH [%]: 34.09882
+CO2 [ppm]: 0; T [°C]: 27.01767; RH [%]: 34.13849
+CO2 [ppm]: 0; T [°C]: 27.02034; RH [%]: 34.14917
