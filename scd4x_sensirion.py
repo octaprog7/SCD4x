@@ -60,10 +60,10 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
     CMD_MEAS_SINGLE_SHOT_RHT_ONLY = const(0x2196)
     CMD_MEAS_SINGLE_SHOT = const(0x219D)
     #
-    _TEMP_OFFSET = const(-45)  # Смещение температурной шкалы [°C]
-    _TEMP_SCALE = const(175 / (1 << 16))  # Коэффициент масштабирования: 175 / 65536 ≈ 0.002670288
-    _TEMP_SCALE_RECIPROCAL = const((1 << 16) / 175)  # Коэффициент масштабирования: 65536 / 175
-    _RH_SCALE = const(100 / (1 << 16))  # Коэффициент масштабирования: 100 / 65536 ≈ 0.001525879
+    TEMP_OFFSET = const(-45)       # Смещение температурной шкалы [°C]
+    TEMP_SCALE = 175 / (1 << 16)   # Коэффициент масштабирования: 175 / 65536 ≈ 0.002670288
+    TEMP_SCALE_RECIPROCAL = (1 << 16) / 175  # Коэффициент масштабирования: 65536 / 175
+    RH_SCALE = 100 / (1 << 16)     # Коэффициент масштабирования: 100 / 65536 ≈ 0.001525879
 
     def __init__(self, adapter: bus_service.BusAdapter, address=0x62,
                  this_is_scd41: bool = True, check_crc: bool = True):
@@ -189,7 +189,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
 
         𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_𝑎𝑐𝑡𝑢𝑎𝑙 = 𝑇 𝑆𝐶𝐷40 − 𝑇 𝑅𝑒𝑓𝑒𝑟𝑒𝑛𝑐𝑒 + 𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_ 𝑝𝑟𝑒𝑣𝑖𝑜𝑢𝑠"""
         cmd = self.CMD_SET_TEMP_OFFS
-        offset_raw = _to_bytes(int(self._TEMP_SCALE_RECIPROCAL * offset), 2)
+        offset_raw = _to_bytes(int(self.TEMP_SCALE_RECIPROCAL * offset), 2)
         self._send_command(cmd, offset_raw, 1)
 
     def get_temperature_offset(self) -> float:
@@ -197,7 +197,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         cmd = self.CMD_GET_TEMP_OFFS
         b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         temp_offs = self._connection.unpack(_str_H, b)[0]
-        return self._TEMP_SCALE * temp_offs
+        return self.TEMP_SCALE * temp_offs
 
     def set_altitude(self, masl: int):  # вызов нужно делать только в IDLE режиме датчика!
         """Чтение и запись высоты датчика должны выполняться, когда SCD4x находится в режиме ожидания.
@@ -283,7 +283,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
                                crc_index=range(2, 9, 3), value_index=val_index)
         words = [self._connection.unpack(_str_H, b[val_rng.start:val_rng.stop])[0] for val_rng in val_index]
         #       CO2 [ppm]           T, Celsius              Relative Humidity, %
-        return measured_values_scd4x(CO2=words[0], T=self._TEMP_OFFSET + self._TEMP_SCALE * words[1], RH=self._RH_SCALE * words[2])
+        return measured_values_scd4x(CO2=words[0], T=self.TEMP_OFFSET + self.TEMP_SCALE * words[1], RH=self.RH_SCALE * words[2])
 
     def get_data_status(self) -> bool:
         """Возвращает Истина, когда данные готовы для считывания."""
