@@ -4,6 +4,14 @@ from scd4x_sensirion import SCD4xSensirion
 from machine import I2C, Pin
 from sensor_pack_2.bus_service import I2cAdapter
 
+# Параметры шины I²C
+I2C_BUS_ID = 1
+I2C_SCL_PIN = 7
+I2C_SDA_PIN = 6
+I2C_FREQ = 400_000  # 100_000 для 'длинных' линий
+#
+REPEAT_COUNT = 10
+
 
 if __name__ == '__main__':
     # пожалуйста установите выводы scl и sda в конструкторе для вашей платы, иначе ничего не заработает!
@@ -11,15 +19,13 @@ if __name__ == '__main__':
     # https://docs.micropython.org/en/latest/library/machine.I2C.html#machine-i2c
     # i2c = I2C(0, scl=Pin(13), sda=Pin(12), freq=400_000) # для примера
     # bus =  I2C(scl=Pin(4), sda=Pin(5), freq=100000)   # на esp8266    !
-    i2c = I2C(id=1, scl=Pin(7), sda=Pin(6), freq=400_000)
+    i2c = I2C(id=I2C_BUS_ID, scl=Pin(I2C_SCL_PIN), sda=Pin(I2C_SDA_PIN), freq=I2C_FREQ)
     adaptor = I2cAdapter(i2c)
     # sensor
     sen = SCD4xSensirion(adaptor)
     # Force return sensor in IDLE mode!
     # Принудительно перевожу датчик в режим IDLE!
     sen.start_measurement(start=False, single_shot=False)
-    sid = sen.get_id()
-    print(f"Sensor id: {sid}")
     # t_offs = 0.0
     # Warning: To change or read sensor settings, the SCD4x must be in idle mode!!!
     # Otherwise, an EIO exception will be raised!
@@ -50,7 +56,7 @@ if __name__ == '__main__':
     wt = sen.get_conversion_cycle_time()
     print(f"conversion cycle time [ms]: {wt}")
     print("Periodic measurement started")
-    repeat = 10
+    repeat = REPEAT_COUNT
     multiplier = 1
     for i in range(repeat):
         time.sleep_ms(wt)
@@ -85,7 +91,7 @@ if __name__ == '__main__':
         _meas_data = sen.get_measurement_value()
         print(f"CO2 [ppm]: {_meas_data.CO2}; T [°C]: {_meas_data.T}; RH [%]: {_meas_data.RH}")
         cnt += 1
-        if cnt > repeat:
+        if cnt > REPEAT_COUNT:
             break
 
     # Принудительно перевожу датчик в режим IDLE!
@@ -94,10 +100,14 @@ if __name__ == '__main__':
     wt = sen.get_conversion_cycle_time()
     print(20 * "*_")
     # Использование режима измерения по запросу! Только относительная влажность и температура измеряются датчиком!
-    # относительная влажность + температура. CO2 равна нулю или не изменяется!!!
+    # Относительная влажность + температура. CO2 равна нулю или не изменяется!!!
     print("Using single shot mode! RH + T only! (Temp + RH. CO2 always zero or does not change!!)")
+    cnt = 0
     while True:
         time.sleep_ms(multiplier * wt)      # 3x period
         _meas_data = sen.get_measurement_value()
         print(f"CO2 [ppm]: {_meas_data.CO2}; T [°C]: {_meas_data.T}; RH [%]: {_meas_data.RH}")
         sen.start_measurement(start=False, single_shot=True, rht_only=True)   # rht only mode!
+        cnt += 1
+        if cnt > REPEAT_COUNT:
+            break
