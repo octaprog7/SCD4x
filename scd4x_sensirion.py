@@ -5,6 +5,7 @@ from sensor_pack_2 import bus_service
 from sensor_pack_2.base_sensor import IBaseSensorEx, Iterator, DeviceEx
 from sensor_pack_2 import base_sensor
 from sensor_pack_2.crc_mod import crc8
+from micropython import const
 import micropython
 import time
 
@@ -20,6 +21,34 @@ measured_values_scd4x = namedtuple("measured_values_scd4x", "CO2 T RH")
 
 class SCD4xSensirion(IBaseSensorEx, Iterator):
     """Class for work with Sensirion SCD4x sensor"""
+    # код команды
+    CMD_SAVE_CONFIG = const(0x3615)
+    CMD_GET_ID = const(0x3682)
+    CMD_SOFT_RESET = const(0x3632)
+    CMD_EXEC_SELF_TEST = const(0x3639)
+    CMD_REINIT = const(0x3646)
+    CMD_SET_TEMP_OFFS = const(0x241D)
+    CMD_GET_TEMP_OFFS = const(0x2318)
+    CMD_SET_ALTITUDE = const(0x2427)
+    CMD_GET_ALTITUDE = const(0x2322)
+    CMD_SET_AMB_PRESS = const(0xE000)
+    CMD_FORCE_RECALIBRATION = const(0x362F)
+    CMD_IS_AUTO_CALIBRATION = const(0x2313)
+    CMD_SET_AUTO_CALIBRATION = const(0x2416)
+    CMD_START_LP_PERIODIC_MEAS = const(0x21AC)
+    CMD_START_PERIODIC_MEAS = const(0x21B1)
+    CMD_STOP_PERIODIC_MEAS = const(0x3F86)
+    CMD_READ_MEAS = const(0xEC05)
+    CMD_GET_DATA_READY_STATUS = const(0xE4B8)
+    CMD_WAKE_UP = const(0x36F6)
+    CMD_POWER_DOWN = const(0x36E0)
+    CMD_MEAS_SINGLE_SHOT_RHT_ONLY = const(0x2196)
+    CMD_MEAS_SINGLE_SHOT = const(0x219D)
+    #
+    FLC_A0 = const(0.0026702880859375)
+    FLC_A1 = const(0.0026703288)
+    FLC_A2 = const(0.0015259022)
+
     def __init__(self, adapter: bus_service.BusAdapter, address=0x62,
                  this_is_scd41: bool = True, check_crc: bool = True):
         """Если check_crc Истина, то каждый, принятый от датчика пакет данных, проверяется на правильность путем
@@ -55,8 +84,8 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
 
     def _send_command(self, cmd: int, value: bytes | None,
                       wait_time: int = 0, bytes_for_read: int = 0,
-                      crc_index: range = None,
-                      value_index: tuple = None) -> bytes | None:
+                      crc_index: range | tuple[int, ...] = None,
+                      value_index: tuple[range, ...] = None) -> bytes | None:
         """Передает команду датчику по шине.
         cmd - код команды.
         value - последовательность, передаваемая после кода команды.
@@ -98,7 +127,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         Чтобы избежать ненужного износа EEPROM, метод следует вызывать только в том случае, если это необходимо(!) и
         если были внесены фактические изменения в конфигурацию. EEPROM гарантированно выдерживает не менее 2000
         циклов записи до отказа(!)."""
-        cmd = 0x3615
+        cmd = self.CMD_SAVE_CONFIG
         self._send_command(cmd, None, 800)
 
     def get_id(self) -> serial_number_scd4x:
@@ -106,7 +135,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         идентификации чипа и проверки наличия датчика."""
         # создатели датчика 'обрадовали'. вместо подсчета одного байта CRC на 6 байт (3 двухбайтных слова)
         # они считают CRC для каждого из 3-х двухбайтных слов!
-        cmd = 0x3682
+        cmd = self.CMD_GET_ID
         b = self._send_command(cmd, None, 0, bytes_for_read=9,
                                crc_index=range(2, 9, 3), value_index=(range(2), range(3, 5), range(6, 8)))
         _gen = ((b[i] << 8) | b[i+1] for i in range(0, 9, 3))
@@ -116,13 +145,13 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         """Я сознательно не стал использовать команду perfom_factory_reset, чтобы было невозможно испортить датчик
         программным путем, так-как количество циклов записи во внутреннюю FLASH память датчика ограничено!
         09.09.2024. Добавил. Под вашу ответственность!"""
-        cmd = 0x3632
+        cmd = self.CMD_SOFT_RESET
         self._send_command(cmd, None, 1200)
 
     def exec_self_test(self) -> bool:
         """Этот метод можно использовать в качестве конечного теста для проверки работоспособности датчика и
         проверки подачи питания на датчик. Возвращает Истина, когда тест пройден успешно."""
-        cmd = 0x3639
+        cmd = self.CMD_EXEC_SELF_TEST
         length = 3
         b = self._send_command(cmd, None, wait_time=10_000,     # да, ждать 10 секунд! yes, wait 10 seconds!
                                bytes_for_read=length, crc_index=range(2, 3), value_index=(range(2),))
@@ -133,7 +162,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         """Команда reinit повторно инициализирует датчик, загружая пользовательские настройки из EEPROM.
         Перед отправкой команды reinit необходимо выполнить метод stop_measurement. Если команда reinit не вызывает
         желаемой повторной инициализации, к SCD4x следует применить цикл включения и выключения питания."""
-        cmd = 0x3646
+        cmd = self.CMD_REINIT
         self._send_command(cmd, None, 20)
 
     # On-chip output signal compensation
@@ -147,29 +176,29 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         смещение температуры установлено в 4°C.
 
         𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_𝑎𝑐𝑡𝑢𝑎𝑙 = 𝑇 𝑆𝐶𝐷40 − 𝑇 𝑅𝑒𝑓𝑒𝑟𝑒𝑛𝑐𝑒 + 𝑇 𝑜𝑓𝑓𝑠𝑒𝑡_ 𝑝𝑟𝑒𝑣𝑖𝑜𝑢𝑠"""
-        cmd = 0x241D
+        cmd = self.CMD_SET_TEMP_OFFS
         offset_raw = self._to_bytes(int(374.49142857 * offset), 2)
         self._send_command(cmd, offset_raw, 1)
 
     def get_temperature_offset(self) -> float:
         """Метод нужно вызывать только в IDLE режиме датчика!"""
-        cmd = 0x2318
+        cmd = self.CMD_GET_TEMP_OFFS
         b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         temp_offs = self._connection.unpack("H", b)[0]
-        return 0.0026702880859375 * temp_offs
+        return self.FLC_A0 * temp_offs
 
     def set_altitude(self, masl: int):  # вызов нужно делать только в IDLE режиме датчика!
         """Чтение и запись высоты датчика должны выполняться, когда SCD4x находится в режиме ожидания.
         Как правило, высота датчика устанавливается один раз после установки устройства. Чтобы сохранить настройку
         в EEPROM, необходимо выполнить метод save_config. По умолчанию высота датчика установлена в
         0 метров над уровнем моря (masl)."""
-        cmd = 0x2427
+        cmd = self.CMD_SET_ALTITUDE
         masl_raw = self._to_bytes(masl, 2)
         self._send_command(cmd, masl_raw, 1)
 
     def get_altitude(self) -> int:
         """Метод нужно вызывать только в IDLE режиме датчика!"""
-        cmd = 0x2322
+        cmd = self.CMD_GET_ALTITUDE
         b = self._send_command(cmd, None, wait_time=1, bytes_for_read=3, crc_index=range(2, 3), value_index=(range(2),))
         return self._connection.unpack("H", b)[0]
 
@@ -180,7 +209,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         рекомендуется для приложений со значительными изменениями давления окружающей среды,
         чтобы обеспечить точность датчика.
         pressure - должна содержать давление в Паскалях!"""
-        cmd = 0xE000
+        cmd = self.CMD_SET_AMB_PRESS
         press_raw = self._to_bytes(int(pressure // 100), 2)     # Pascal // 100
         self._send_command(cmd, press_raw, 1)
 
@@ -189,20 +218,20 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         """Прочитайте раздел «3.7.1 Выполнение_принудительной_перекалибровки». целевая_концентрация_CO2 [ppm CO2]"""
         base_sensor.check_value(target_co2_concentration, range(2**16),
                                 f"Invalid target CO2 concentration: {target_co2_concentration} ppm")
-        cmd = 0x362F
+        cmd = self.CMD_FORCE_RECALIBRATION
         target_raw = self._to_bytes(target_co2_concentration, 2)
         b = self._send_command(cmd, target_raw, 400, 3, crc_index=range(2, 3), value_index=(range(2),))
         return self._connection.unpack("h", b)[0]
 
     def is_auto_calibration(self) -> bool:
         """Пожалуйста, прочтите «3.7.3 get_automatic_self_calibration_enabled»"""
-        cmd = 0x2313
+        cmd = self.CMD_IS_AUTO_CALIBRATION
         b = self._send_command(cmd, None, 1, 3, crc_index=range(2, 3), value_index=(range(2),))
         return 0 != self._connection.unpack("H", b)[0]
 
     def set_auto_calibration(self, value: bool):
         """Пожалуйста, прочтите «3.7.2 set_automatic_self_calibration_enabled»"""
-        cmd = 0x2416
+        cmd = self.CMD_SET_AUTO_CALIBRATION
         value_raw = self._to_bytes(int(value), length=2)
         self._send_command(cmd, value_raw, wait_time=1)
 
@@ -224,9 +253,9 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         Для чтения результатов используйте метод get_meas_data."""
         wt = 0
         if start:
-            cmd = 0x21AC if self._low_power_mode else 0x21B1
+            cmd = self.CMD_START_LP_PERIODIC_MEAS if self._low_power_mode else self.CMD_START_PERIODIC_MEAS
         else:   # stop periodic measurement
-            cmd = 0x3F86
+            cmd = self.CMD_STOP_PERIODIC_MEAS
             wt = 500
         self._send_command(cmd, None, wt)
         self._continuous_mode = start
@@ -236,17 +265,17 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
     def get_measurement_value(self, value_index: int = 0) -> None | measured_values_scd4x:
         """Чтение выходных данных датчика. Данные измерения могут быть считаны только один раз за интервал
         обновления сигнала, так как буфер очищается при считывании. Смотри get_conversion_cycle_time()!"""
-        cmd = 0xEC05
+        cmd = self.CMD_READ_MEAS
         val_index = (range(2), range(3, 5), range(6, 8))
         b = self._send_command(cmd, None, 1, bytes_for_read=9,
                                crc_index=range(2, 9, 3), value_index=val_index)
         words = [self._connection.unpack("H", b[val_rng.start:val_rng.stop])[0] for val_rng in val_index]
         #       CO2 [ppm]           T, Celsius              Relative Humidity, %
-        return measured_values_scd4x(CO2=words[0], T=-45 + 0.0026703288 * words[1], RH=0.0015259022 * words[2])
+        return measured_values_scd4x(CO2=words[0], T=-45 + self.FLC_A1 * words[1], RH=self.FLC_A2 * words[2])
 
     def get_data_status(self) -> bool:
         """Возвращает Истина, когда данные готовы для считывания."""
-        cmd = 0xE4B8
+        cmd = self.CMD_GET_DATA_READY_STATUS
         b = self._send_command(cmd, None, 1, 3, crc_index=range(2, 3), value_index=(range(2),))
         result = 0 != (self._connection.unpack(fmt_char="H", source=b)[0] & 0x7FF)
         return result
@@ -263,7 +292,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         """Пожалуйста, прочтите «3.10.3 выключение питания» и «3.10.4 пробуждение»"""
         if not self._isSCD41:
             return
-        cmd = 0x36F6 if value else 0x36E0
+        cmd = self.CMD_WAKE_UP if value else self.CMD_POWER_DOWN
         wt = 20 if value else 1
         self._send_command(cmd, None, wt)
 
@@ -275,7 +304,7 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
         Пожалуйста, прочтите '3.10 Low power single shot (SCD41)'"""
         if not self._isSCD41:
             return
-        cmd = 0x2196 if rht_only else 0x219D
+        cmd = self.CMD_MEAS_SINGLE_SHOT_RHT_ONLY if rht_only else self.CMD_MEAS_SINGLE_SHOT
         self._send_command(cmd, None, 0)
         self._continuous_mode = False
         self._single_shot_mode = True
