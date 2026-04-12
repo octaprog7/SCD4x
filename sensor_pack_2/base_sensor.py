@@ -6,18 +6,93 @@ import micropython
 from sensor_pack_2 import bus_service
 from machine import Pin
 
-
 @micropython.native
-def check_value(value: int | None, valid_range: range | tuple, error_msg: str) -> int | None:
+def check_value(value: int | None,
+                valid_range: range | tuple,
+                error_msg: str) -> int | None:
+    """
+    Старая версия: Проверка целочисленного значения в допустимом диапазоне.
+    Для сохранения программной совместимости со 'старым' кодом!
+
+    Аргументы:
+        value (int | None): Проверяемое целое значение.
+        valid_range (range | tuple): Допустимый диапазон.
+            - range: для непрерывного диапазона (например, range(-40, 126))
+            - tuple: для списка дискретных значений (например, (0, 2, 3))
+        error_msg (str): Сообщение об ошибке при выходе за диапазон.
+
+    Возвращает:
+        int | None: Проверенное значение, или None если value is None.
+
+    Raises:
+        ValueError: Если значение выходит за пределы диапазона.
+    """
     if value is None:
         return value
+
+    # Проверка: значение должно быть в диапазоне или списке
     if value not in valid_range:
         raise ValueError(error_msg)
+
     return value
 
+@micropython.native
+def check_value_ex(value: int | float | None,
+                   valid_range: range | tuple[int, int] | tuple[float, float] | None,
+                   error_msg: str) -> int | float | None:
+    """
+    Универсальная проверка значения (int или float) в допустимом диапазоне.
 
-def get_error_str(val_name: str, val: int, rng: range | tuple) -> str:
-    """Возвращает подробное сообщение об ошибке.
+    Аргументы:
+        value (int | float | None): Проверяемое значение.
+        valid_range (range | tuple | None): Допустимый диапазон.
+            - range: для целых значений (например, range(-40, 126))
+            - tuple[int, int]: для целых границ (например, (-40, 125))
+            - tuple[float, float]: для вещественных границ (например, (-40.0, 125.0))
+        error_msg (str): Сообщение об ошибке при выходе за диапазон.
+
+    Возвращает:
+        int | float | None: Проверенное значение, или None если value is None.
+
+    Raises:
+        ValueError: Если значение выходит за пределы диапазона.
+    """
+    if value is None or valid_range is None:
+        return value
+
+    # Проверка типа value
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"Неподдерживаемый тип значения: {type(value)}")
+
+    # Проверка диапазона в зависимости от типа valid_range
+    if isinstance(valid_range, range):
+        if value not in valid_range:
+            raise ValueError(error_msg)
+        return value
+
+    if not isinstance(valid_range, tuple):
+        raise ValueError(f"Неподдерживаемый тип диапазона: {type(valid_range)}")
+
+    if 2 != len(valid_range):
+        raise ValueError(f"tuple должен содержать 2 элемента (min, max), получено: {len(valid_range)}")
+
+    min_val, max_val = valid_range
+    # Проверка типов значений границ диапазона
+    if not isinstance(min_val, (int, float)) or not isinstance(max_val, (int, float)):
+        raise ValueError(f"Границы диапазона должны быть int или float: {valid_range}")
+
+    if min_val >= max_val:
+        raise ValueError(f"min_val: {min_val} должно быть строго меньше max_val: {max_val}")
+
+        # Проверка значения в диапазоне
+    if min_val <= value <= max_val:
+        return value
+    else:
+        raise ValueError(error_msg)
+
+
+def get_error_str(val_name: str, val: int | float, rng: range | tuple) -> str:
+    """Возвращает подробное сообщение об ошибке;
     val_name - имя переменной в коде;
     val - значение переменной val_name;
     rng - допустимый диапазон переменной"""
@@ -121,7 +196,7 @@ class DeviceEx(Device):
         """Чтение из устройства в буфер"""
         return self.adapter.read_to_buf(self.address, buf)
 
-    def write(self, buf: bytes):
+    def write(self, buf: bytes | memoryview):
         """Записывает в устройство информацию из buf. Добавил 25.01.2024"""
         return self.adapter.write(self.address, buf)
 
@@ -169,11 +244,11 @@ class ITemperatureSensor:
     """Вспомогательный или основной датчик температуры"""
 
     def enable_temp_meas(self, enable: bool = True):
-        """Включает измерение температуры при enable в Истина
+        """Включает измерение температуры если enable Истина
         Для переопределения программистом!!!"""
         raise NotImplementedError()
 
-    def get_temperature(self) -> int | float:
+    def get_temperature(self) -> [int, float]:
         """Возвращает температуру корпуса датчика в градусах Цельсия!
         Для переопределения программистом!!!"""
         raise NotImplementedError()
@@ -187,7 +262,7 @@ class IPower:
 
     def set_power_level(self, level: int | None = 0) -> int:
         """level >=0 or None
-        Устанавливает режим мощности.
+        Устанавливает режим мощности;
         level равен 0 - устройство выполняет все свои функции (максимальное энергопотребление)
         level равен maximum (на ваш выбор) - устройство выполняет минимум своих функций (минимальное энергопотребление)
         Возвращает текущий уровень потребления устройства.
@@ -205,6 +280,7 @@ class IDentifier:
         raise NotImplementedError()
 
     def soft_reset(self):
+        """Программный сброс устройства"""
         raise NotImplementedError()
 
 
@@ -220,14 +296,19 @@ class IBaseSensorEx:
         """Настраивает параметры датчика и запускает процесс измерения"""
         raise NotImplementedError()
 
-    def get_measurement_value(self, value_index: int):
+    def get_measurement_value(self, value_index: int | None):
         """Возвращает измеренное датчиком значение(значения) по его индексу/номеру."""
         raise NotImplementedError()
 
-    def get_data_status(self):
+    def get_data_status(self, raw: bool = True):
         """Возвращает состояние готовности данных для считывания?
-        Тип возвращаемого значения выбирайте сами!"""
+        Тип возвращаемого значения выбирайте сами!
+        Если raw Истина, то возвращается сырое/не обработанное значение состояния!"""
         raise NotImplementedError()
+
+    #def get_config(self, raw: bool = True):
+    #    """Возвращает текущие настройки датчика. Если raw - в Истина, то возвращается int, иначе произвольный тип."""
+    #    raise NotImplemented
 
     def is_single_shot_mode(self) -> bool:
         """Возвращает Истина, когда датчик находится в режиме однократных измерений,
