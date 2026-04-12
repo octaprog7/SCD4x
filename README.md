@@ -41,6 +41,9 @@ The person expressed a useful idea in my opinion. You can read it at the [link](
 
 На мой взгляд, человек высказал полезную мысль: [тут](https://www.reddit.com/r/esp32/comments/12y0x5k/warning_about_the_sensirion_scd4041_co2_sensors/).
 
+# Data received from the sensor
+* [data](/tests/main.txt)
+
 ## Note
 If you liked my software, please be generous and give it a star!
 Если вам понравилось мое программное обеспечение, пожалуйста, будьте щедры и поставьте ему звезду!
