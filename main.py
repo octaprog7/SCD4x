@@ -8,7 +8,7 @@ from sensor_pack_2.bus_service import I2cAdapter
 I2C_BUS_ID = 1
 I2C_SCL_PIN = 7
 I2C_SDA_PIN = 6
-I2C_FREQ = 400_000  # 100_000 для 'длинных' линий
+I2C_FREQ = 400_000  # Гц. 100_000 Гц для 'длинных' линий
 #
 REPEAT_COUNT = 10
 
