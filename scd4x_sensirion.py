@@ -64,6 +64,9 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
     TEMP_SCALE = 175 / (1 << 16)   # Коэффициент масштабирования: 175 / 65536 ≈ 0.002670288
     TEMP_SCALE_RECIPROCAL = (1 << 16) / 175  # Коэффициент масштабирования: 65536 / 175
     RH_SCALE = 100 / (1 << 16)     # Коэффициент масштабирования: 100 / 65536 ≈ 0.001525879
+    # размеры буферов
+    BUF_SIZE_CMD = 3    # состояние, настройки
+    BUF_SIZE_DATA = 9   # данные измерений
 
     def __init__(self, adapter: bus_service.BusAdapter, address=0x62,
                  this_is_scd41: bool = True, check_crc: bool = True):
@@ -86,11 +89,11 @@ class SCD4xSensirion(IBaseSensorEx, Iterator):
 
     def _get_local_buf(self, bytes_for_read: int) -> None | bytearray:
         """возвращает локальный буфер для операции чтения"""
-        if bytes_for_read not in (0, 3, 9):
+        if bytes_for_read not in (0, self.BUF_SIZE_CMD, self.BUF_SIZE_DATA):
             raise ValueError(f"Invalid value for bytes_for_read: {bytes_for_read}")
         if not bytes_for_read:
             return None
-        if 3 == bytes_for_read:
+        if self.BUF_SIZE_CMD == bytes_for_read:
             return self._buf_3
         return self._buf_9
 
