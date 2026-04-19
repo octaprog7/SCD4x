@@ -44,6 +44,11 @@ The person expressed a useful idea in my opinion. You can read it at the [link](
 # Data received from the sensor
 * [data](/tests/main.txt)
 
-## Note
+# Credibility and recognition
+- Starred by an expert in formal verification.
+- Starred by a developer specializing in programming‑language tools and build utilities.
+- Starred by a researcher in scientific computing and data analysis.
+
+# Note
 If you liked my software, please be generous and give it a star!
 Если вам понравилось мое программное обеспечение, пожалуйста, будьте щедры и поставьте ему звезду!
